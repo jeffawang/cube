@@ -8,10 +8,26 @@ import (
 	"net"
 )
 
+func init() {
+	gob.Register(&ClientMessage{})
+	gob.Register(&ServerMessage{})
+	gob.Register(&ServerTile{})
+	gob.Register(&ClientReplace{})
+	gob.Register(&Args{})
+}
+
+// ==============================
+// Server messages
+// ==============================
+
 // ServerTile is a tile that the server sends down to the client
 type ServerTile struct {
 	Tile
 }
+
+// ==============================
+// Client messages
+// ==============================
 
 // ClientReplace represents the intent to replace a cell's rune
 // in a tile.
@@ -19,6 +35,11 @@ type ClientReplace struct {
 	X, Y int
 	Rune rune
 }
+
+// ==============================
+// RPC framework
+// ==============================
+
 type RPC struct {
 	SendQueue chan interface{}
 	RecvQueue chan interface{}
@@ -57,7 +78,7 @@ func (r *RPC) Connect() {
 	go func() {
 		for {
 			val := <-r.SendQueue
-			err := r.enc.Encode(val)
+			err := r.enc.Encode(&val)
 			if err != nil {
 				fmt.Printf("Problem encoding message (%v): %s\n", val, err.Error())
 				continue
@@ -68,5 +89,4 @@ func (r *RPC) Connect() {
 			}
 		}
 	}()
-
 }
