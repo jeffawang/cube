@@ -1,36 +1,40 @@
 package main
 
 import (
-	"bufio"
-	"encoding/gob"
 	"fmt"
 	"net"
 	"os"
 )
 
-func runClient(sockPath string) {
+type Client struct {
+	tile Tile
+	rpc  RPC
+}
+
+func NewClient(sockpath string) Client {
 	conn, err := net.Dial("unix", sockPath)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	return Client{
+		tile: NewTile(),
+		rpc:  NewRPC(conn),
+	}
+}
 
-	buf := bufio.NewWriter(conn)
-	dec := gob.NewDecoder(conn)
-	enc := gob.NewEncoder(buf)
+func runClient(sockPath string) {
+	client := NewClient(sockPath)
+	client.rpc.Connect()
 
 	var tile ServerTile
 
 	for i := 0; i < 6; i++ {
 		args := Args{7, 8}
-		enc.Encode(args)
-		buf.Flush()
 
-		var resp interface{}
-		err = dec.Decode(&resp)
-		if err != nil {
-			fmt.Println("error decoding response", err)
-		}
+		client.rpc.SendQueue <- &args
+		resp := <-client.rpc.RecvQueue
+
 		fmt.Println("Got response:", resp)
 		switch x := resp.(type) {
 		case *ServerMessage:
@@ -44,7 +48,8 @@ func runClient(sockPath string) {
 			fmt.Println("shrugg??")
 		}
 	}
+	fmt.Println(tile)
 	// resp.A()
 
-	runGame(tile)
+	// runGame(tile)
 }

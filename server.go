@@ -14,11 +14,7 @@ func init() {
 	gob.Register(&ClientMessage{})
 	gob.Register(&ServerMessage{})
 	gob.Register(&ServerTile{})
-}
-
-// ServerTile is a tile that the server sends down to the client
-type ServerTile struct {
-	Tile
+	gob.Register(&Args{})
 }
 
 // ServerMessage is a message sent by the server down to clients.

@@ -1,83 +1,72 @@
 package main
 
 import (
-	"sync"
-
-	tcell "github.com/gdamore/tcell/v2"
+	"bufio"
+	"encoding/gob"
+	"fmt"
+	"io"
+	"net"
 )
 
-func runGame(serverTile ServerTile) {
-	s := MustScreen()
+// ServerTile is a tile that the server sends down to the client
+type ServerTile struct {
+	Tile
+}
 
-	// tile := NewTile()
-	player := NewPlayer()
+// ClientReplace represents the intent to replace a cell's rune
+// in a tile.
+type ClientReplace struct {
+	X, Y int
+	Rune rune
+}
+type RPC struct {
+	SendQueue chan interface{}
+	RecvQueue chan interface{}
 
-	tile := serverTile.Tile
+	enc *gob.Encoder
+	dec *gob.Decoder
+	buf *bufio.Writer
+}
 
-	entities := drawers{&tile, &player}
-	entities.Draw(s)
+func NewRPC(conn net.Conn) RPC {
+	buf := bufio.NewWriter(conn)
 
-	// tile.Draw(s)
-
-	// Event loop
-	// ox, oy := -1, -1
-	cleanupOnce := sync.Once{}
-	defer cleanupOnce.Do(s.Fini)
-
-	// Hot loop
-hot:
-	for {
-		entities.Draw(s)
-		// Update screen
-		s.Show()
-
-		// Poll event
-		ev := s.PollEvent()
-
-		// Process event
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			s.Sync()
-		case *tcell.EventKey:
-			switch ev.Key() {
-			case tcell.KeyEscape, tcell.KeyCtrlC:
-				cleanupOnce.Do(s.Fini)
-				break hot
-			case tcell.KeyCtrlL:
-				s.Sync()
-			case tcell.KeyLeft:
-				player.Move(-1, 0)
-			case tcell.KeyRight:
-				player.Move(1, 0)
-			case tcell.KeyUp:
-				player.Move(0, -1)
-			case tcell.KeyDown:
-				player.Move(0, 1)
-			default:
-				switch ev.Rune() {
-				case 'C', 'c':
-					panic("omg")
-				case 'x':
-					player.Insert(&tile, 'x')
-				}
-			}
-		case *tcell.EventMouse:
-			// x, y := ev.Position()
-			button := ev.Buttons()
-			// Only process button events, not wheel events
-			button &= tcell.ButtonMask(0xff)
-
-			// if button != tcell.ButtonNone && ox < 0 {
-			// 	ox, oy = x, y
-			// }
-			// switch ev.Buttons() {
-			// case tcell.ButtonNone:
-			// 	if ox >= 0 {
-			// 		label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
-			// 		drawBox(s, ox, oy, x, y, boxStyle, label)
-			// 		ox, oy = -1, -1
-			// 	}
-			// }
-		}
+	return RPC{
+		SendQueue: make(chan interface{}, 10),
+		RecvQueue: make(chan interface{}, 10),
+		buf:       buf,
+		dec:       gob.NewDecoder(conn),
+		enc:       gob.NewEncoder(buf),
 	}
+}
+
+func (r *RPC) Connect() {
+	go func() {
+		for {
+			var resp interface{}
+			err := r.dec.Decode(&resp)
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				fmt.Println("uh oh", err)
+				continue
+			}
+			r.RecvQueue <- resp
+		}
+	}()
+	go func() {
+		for {
+			val := <-r.SendQueue
+			err := r.enc.Encode(val)
+			if err != nil {
+				fmt.Printf("Problem encoding message (%v): %s\n", val, err.Error())
+				continue
+			}
+			err = r.buf.Flush()
+			if err != nil {
+				fmt.Printf("Problem flushing send buffer (%v): %s\n", val, err.Error())
+			}
+		}
+	}()
+
 }
