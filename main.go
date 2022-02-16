@@ -67,12 +67,56 @@ func mustScreen() tcell.Screen {
 	return s
 }
 
+type Drawer interface {
+	Draw(tcell.Screen)
+}
+
+type Player struct {
+	X, Y int
+	Rune rune
+}
+
+func (p *Player) Draw(s tcell.Screen) {
+	s.SetContent(1+p.X, 1+p.Y, p.Rune, nil, tcell.StyleDefault)
+}
+
+func (p *Player) Move(dx, dy int) {
+	newX := p.X + dx
+	newY := p.Y + dy
+	if 0 <= newX && newX < WIDTH {
+		p.X = newX
+	}
+	if 0 <= newY && newY < WIDTH {
+		p.Y = newY
+	}
+}
+
+func NewPlayer() Player {
+	return Player{
+		X:    WIDTH / 2,
+		Y:    WIDTH / 2,
+		Rune: 'p',
+	}
+}
+
+type drawers []Drawer
+
+func (ds drawers) Draw(s tcell.Screen) {
+	for _, d := range ds {
+		d.Draw(s)
+	}
+}
+
 func main() {
 	s := mustScreen()
 
-	t := NewTile()
+	tile := NewTile()
+	player := NewPlayer()
 
-	t.Draw(s)
+	entities := drawers{&tile, &player}
+	entities.Draw(s)
+
+	// tile.Draw(s)
 
 	// Event loop
 	// ox, oy := -1, -1
@@ -82,6 +126,7 @@ func main() {
 	// Hot loop
 hot:
 	for {
+		entities.Draw(s)
 		// Update screen
 		s.Show()
 
@@ -93,14 +138,25 @@ hot:
 		case *tcell.EventResize:
 			s.Sync()
 		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+			switch ev.Key() {
+			case tcell.KeyEscape, tcell.KeyCtrlC:
 				cleanupOnce.Do(s.Fini)
 				break hot
-			} else if ev.Key() == tcell.KeyCtrlL {
+			case tcell.KeyCtrlL:
 				s.Sync()
-			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
-				panic("omg")
-				s.Clear()
+			case tcell.KeyLeft:
+				player.Move(-1, 0)
+			case tcell.KeyRight:
+				player.Move(1, 0)
+			case tcell.KeyUp:
+				player.Move(0, -1)
+			case tcell.KeyDown:
+				player.Move(0, 1)
+			default:
+				switch ev.Rune() {
+				case 'C', 'c':
+					panic("omg")
+				}
 			}
 		case *tcell.EventMouse:
 			// x, y := ev.Position()
