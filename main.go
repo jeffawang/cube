@@ -132,6 +132,7 @@ func main() {
 	defer cleanupOnce.Do(s.Fini)
 
 	// Hot loop
+hot:
 	for {
 		// Update screen
 		s.Show()
@@ -146,9 +147,11 @@ func main() {
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				cleanupOnce.Do(s.Fini)
+				break hot
 			} else if ev.Key() == tcell.KeyCtrlL {
 				s.Sync()
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
+				panic("omg")
 				s.Clear()
 			}
 		case *tcell.EventMouse:
