@@ -15,21 +15,29 @@ const sockPath = "./test.sock"
 
 type Player struct {
 	*tl.Entity
+	prevX int
+	prevY int
 }
 
 func (p *Player) Tick(event tl.Event) {
-	if event.Type == tl.EventKey {
-		x, y := p.Position()
-		switch event.Key {
+	if event.Type == tl.EventKey { // Is it a keyboard event?
+		p.prevX, p.prevY = p.Position()
+		switch event.Key { // If so, switch on the pressed key.
 		case tl.KeyArrowRight:
-			p.SetPosition(x+1, y)
+			p.SetPosition(p.prevX+1, p.prevY)
 		case tl.KeyArrowLeft:
-			p.SetPosition(x-1, y)
+			p.SetPosition(p.prevX-1, p.prevY)
 		case tl.KeyArrowUp:
-			p.SetPosition(x, y-1)
+			p.SetPosition(p.prevX, p.prevY-1)
 		case tl.KeyArrowDown:
-			p.SetPosition(x, y+1)
+			p.SetPosition(p.prevX, p.prevY+1)
 		}
+	}
+}
+
+func (p *Player) Collide(collision tl.Physical) {
+	if _, ok := collision.(*tl.Rectangle); ok {
+		p.SetPosition(p.prevX, p.prevY)
 	}
 }
 
@@ -42,7 +50,10 @@ func main() {
 	})
 	level.AddEntity(tl.NewRectangle(10, 10, 50, 20, tl.ColorBlue))
 
-	player := Player{tl.NewEntity(1, 1, 1, 1)}
+	canvas := tl.NewCanvas(80, 25)
+	level.AddEntity(canvas)
+
+	player := Player{Entity: tl.NewEntity(1, 1, 1, 1)}
 	player.SetCell(0, 0, &tl.Cell{Fg: tl.ColorRed, Ch: '옷'})
 	level.AddEntity(&player)
 
