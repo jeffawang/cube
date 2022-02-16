@@ -113,7 +113,7 @@ hot:
 				case 'x':
 					player.Insert(&tile, 'x')
 					req := ClientReplace{
-						X: player.X, Y: player.Y, Rune: 'r',
+						X: player.X, Y: player.Y, Rune: 'x',
 					}
 					c.rpc.SendQueue <- req
 				}

@@ -76,8 +76,7 @@ func (r *RPC) Connect() {
 		}
 	}()
 	go func() {
-		for {
-			val := <-r.SendQueue
+		for val := range r.SendQueue {
 			err := r.enc.Encode(&val)
 			if err != nil {
 				fmt.Printf("Problem encoding message (%v): %s\n", val, err.Error())
