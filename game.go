@@ -1,83 +1,35 @@
 package main
 
-import tcell "github.com/gdamore/tcell/v2"
+import (
+	"log"
 
-const WIDTH = 25
-const SCREENWIDTH = WIDTH + 2
+	tcell "github.com/gdamore/tcell/v2"
+)
 
-// ==============================
-// Tile
-// ==============================
-
-type Tile struct {
-	Cells [WIDTH][WIDTH]Cell
+type Drawer interface {
+	Draw(tcell.Screen)
 }
 
-func NewTile() Tile {
-	return Tile{[WIDTH][WIDTH]Cell{}}
-}
+type drawers []Drawer
 
-func (t *Tile) Draw(s tcell.Screen) {
-	for y, row := range t.Cells {
-		for x, col := range row {
-			s.SetContent(1+x, 1+y, col.Rune, nil, tcell.StyleDefault)
-		}
-	}
-	e := SCREENWIDTH - 1
-	for i := 1; i < e; i++ {
-		s.SetContent(i, 0, tcell.RuneHLine, nil, tcell.StyleDefault)
-		s.SetContent(i, e, tcell.RuneHLine, nil, tcell.StyleDefault)
-		s.SetContent(0, i, tcell.RuneVLine, nil, tcell.StyleDefault)
-		s.SetContent(e, i, tcell.RuneVLine, nil, tcell.StyleDefault)
-	}
-	s.SetContent(0, 0, tcell.RuneULCorner, nil, tcell.StyleDefault)
-	s.SetContent(0, e, tcell.RuneLLCorner, nil, tcell.StyleDefault)
-	s.SetContent(e, 0, tcell.RuneURCorner, nil, tcell.StyleDefault)
-	s.SetContent(e, e, tcell.RuneLRCorner, nil, tcell.StyleDefault)
-}
-
-// ==============================
-// Cell
-// ==============================
-
-type Cell struct {
-	Rune  rune
-	Color tcell.Style
-}
-
-// ==============================
-// Player
-// ==============================
-
-type Player struct {
-	X, Y int
-	Rune rune
-}
-
-func (p *Player) Draw(s tcell.Screen) {
-	s.SetContent(1+p.X, 1+p.Y, p.Rune, nil, tcell.StyleDefault)
-}
-
-func (p *Player) Move(dx, dy int) {
-	newX := p.X + dx
-	newY := p.Y + dy
-	if 0 <= newX && newX < WIDTH {
-		p.X = newX
-	}
-	if 0 <= newY && newY < WIDTH {
-		p.Y = newY
+func (ds drawers) Draw(s tcell.Screen) {
+	for _, d := range ds {
+		d.Draw(s)
 	}
 }
 
-func (p *Player) Insert(t *Tile, r rune) {
-	t.Cells[p.Y][p.X].Rune = r
-	p.Move(1, 0)
-}
-
-func NewPlayer() Player {
-	return Player{
-		X:    WIDTH / 2,
-		Y:    WIDTH / 2,
-		Rune: 'p',
+func MustScreen() tcell.Screen {
+	defaultStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+	s, err := tcell.NewScreen()
+	if err != nil {
+		log.Fatalf("%+v", err)
 	}
+	if err := s.Init(); err != nil {
+		log.Fatalf("%+v", err)
+	}
+	s.SetStyle(defaultStyle)
+	s.EnableMouse()
+	s.EnablePaste()
+	s.Clear()
+	return s
 }
