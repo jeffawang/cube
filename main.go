@@ -91,6 +91,11 @@ func (p *Player) Move(dx, dy int) {
 	}
 }
 
+func (p *Player) Insert(t *Tile, r rune) {
+	t.Cells[p.Y][p.X].Rune = r
+	p.Move(1, 0)
+}
+
 func NewPlayer() Player {
 	return Player{
 		X:    WIDTH / 2,
@@ -156,6 +161,8 @@ hot:
 				switch ev.Rune() {
 				case 'C', 'c':
 					panic("omg")
+				case 'x':
+					player.Insert(&tile, 'x')
 				}
 			}
 		case *tcell.EventMouse:
