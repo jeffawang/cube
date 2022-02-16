@@ -26,7 +26,8 @@ type Blah interface {
 
 // ServerMessage is a message sent by the server down to clients.
 type ServerMessage struct {
-	Message string
+	Number int
+	Even   bool
 }
 
 func (s *ServerMessage) A() {
@@ -58,7 +59,9 @@ func serveConn(conn net.Conn) {
 	sm := new(ServerMessage)
 	cm := new(ClientMessage)
 
-	fmt.Println("Serving connection!")
+	fmt.Println("Serving connection!", conn.LocalAddr().String(), conn.LocalAddr().Network())
+
+	defer fmt.Println("omg")
 
 	i := 0
 
@@ -75,13 +78,17 @@ func serveConn(conn net.Conn) {
 		fmt.Println("got request:", req)
 
 		if i%2 == 0 {
-			sm.Message = "hi!"
+			sm.Number = i
+			sm.Even = i%2 == 0
 			resp = sm
 		} else {
 			cm.Number = i
 			cm.Even = i%2 == 0
 			resp = cm
 		}
+		enc.Encode(&resp)
+		enc.Encode(&resp)
+		enc.Encode(&resp)
 		enc.Encode(&resp)
 		buf.Flush()
 		i += 1
@@ -119,11 +126,11 @@ func client() {
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(buf)
 
-	for {
+	args := Args{7, 8}
+	enc.Encode(args)
+	buf.Flush()
 
-		args := Args{7, 8}
-		enc.Encode(args)
-		buf.Flush()
+	for {
 
 		var resp Blah
 		err = dec.Decode(&resp)
