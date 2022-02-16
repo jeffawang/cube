@@ -5,61 +5,130 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 
-	tl "github.com/JoelOtter/termloop"
+	tcell "github.com/gdamore/tcell/v2"
 )
 
 const sockPath = "./test.sock"
 
-type Player struct {
-	*tl.Entity
-	prevX int
-	prevY int
-}
-
-func (p *Player) Tick(event tl.Event) {
-	if event.Type == tl.EventKey { // Is it a keyboard event?
-		p.prevX, p.prevY = p.Position()
-		switch event.Key { // If so, switch on the pressed key.
-		case tl.KeyArrowRight:
-			p.SetPosition(p.prevX+1, p.prevY)
-		case tl.KeyArrowLeft:
-			p.SetPosition(p.prevX-1, p.prevY)
-		case tl.KeyArrowUp:
-			p.SetPosition(p.prevX, p.prevY-1)
-		case tl.KeyArrowDown:
-			p.SetPosition(p.prevX, p.prevY+1)
+func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
+	row := y1
+	col := x1
+	for _, r := range []rune(text) {
+		s.SetContent(col, row, r, nil, style)
+		col++
+		if col >= x2 {
+			row++
+			col = x1
+		}
+		if row > y2 {
+			break
 		}
 	}
 }
 
-func (p *Player) Collide(collision tl.Physical) {
-	if _, ok := collision.(*tl.Rectangle); ok {
-		p.SetPosition(p.prevX, p.prevY)
+func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
+	if y2 < y1 {
+		y1, y2 = y2, y1
 	}
+	if x2 < x1 {
+		x1, x2 = x2, x1
+	}
+
+	// Fill background
+	for row := y1; row <= y2; row++ {
+		for col := x1; col <= x2; col++ {
+			s.SetContent(col, row, ' ', nil, style)
+		}
+	}
+
+	// Draw borders
+	for col := x1; col <= x2; col++ {
+		s.SetContent(col, y1, tcell.RuneHLine, nil, style)
+		s.SetContent(col, y2, tcell.RuneHLine, nil, style)
+	}
+	for row := y1 + 1; row < y2; row++ {
+		s.SetContent(x1, row, tcell.RuneVLine, nil, style)
+		s.SetContent(x2, row, tcell.RuneVLine, nil, style)
+	}
+
+	// Only draw corners if necessary
+	if y1 != y2 && x1 != x2 {
+		s.SetContent(x1, y1, tcell.RuneULCorner, nil, style)
+		s.SetContent(x2, y1, tcell.RuneURCorner, nil, style)
+		s.SetContent(x1, y2, tcell.RuneLLCorner, nil, style)
+		s.SetContent(x2, y2, tcell.RuneLRCorner, nil, style)
+	}
+
+	drawText(s, x1+1, y1+1, x2-1, y2-1, style, text)
 }
 
 func main() {
-	game := tl.NewGame()
-	level := tl.NewBaseLevel(tl.Cell{
-		Bg: tl.ColorGreen,
-		Fg: tl.ColorBlack,
-		Ch: 'v',
-	})
-	level.AddEntity(tl.NewRectangle(10, 10, 50, 20, tl.ColorBlue))
 
-	canvas := tl.NewCanvas(80, 25)
-	level.AddEntity(canvas)
+	defaultStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
+	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorPurple)
 
-	player := Player{Entity: tl.NewEntity(1, 1, 1, 1)}
-	player.SetCell(0, 0, &tl.Cell{Fg: tl.ColorRed, Ch: '옷'})
-	level.AddEntity(&player)
+	s, err := tcell.NewScreen()
+	if err != nil {
+		log.Fatalf("%+v", err)
+	}
+	if err := s.Init(); err != nil {
+		log.Fatalf("%+v", err)
+	}
+	s.SetStyle(defaultStyle)
+	s.EnableMouse()
+	s.EnablePaste()
+	s.Clear()
+	drawBox(s, 1, 1, 42, 7, boxStyle, "Click and drag to draw a box")
+	drawBox(s, 5, 9, 32, 14, boxStyle, "Press C to reset")
 
-	game.Screen().SetLevel(level)
+	// Event loop
+	ox, oy := -1, -1
+	quit := func() {
+		s.Fini()
+		os.Exit(0)
+	}
+	for {
+		// Update screen
+		s.Show()
 
-	game.Start()
+		// Poll event
+		ev := s.PollEvent()
+
+		// Process event
+		switch ev := ev.(type) {
+		case *tcell.EventResize:
+			s.Sync()
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				quit()
+			} else if ev.Key() == tcell.KeyCtrlL {
+				s.Sync()
+			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
+				s.Clear()
+			}
+		case *tcell.EventMouse:
+			x, y := ev.Position()
+			button := ev.Buttons()
+			// Only process button events, not wheel events
+			button &= tcell.ButtonMask(0xff)
+
+			if button != tcell.ButtonNone && ox < 0 {
+				ox, oy = x, y
+			}
+			switch ev.Buttons() {
+			case tcell.ButtonNone:
+				if ox >= 0 {
+					label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
+					drawBox(s, ox, oy, x, y, boxStyle, label)
+					ox, oy = -1, -1
+				}
+			}
+		}
+	}
 
 	return
 	fmt.Println(os.Args)
