@@ -20,8 +20,32 @@ func main() {
 	}
 }
 
-type Response struct {
+type Blah interface {
+	A()
+}
+
+// ServerMessage is a message sent by the server down to clients.
+type ServerMessage struct {
 	Message string
+}
+
+func (s *ServerMessage) A() {
+	fmt.Println("I'm a ServerMessage!")
+}
+
+// ClientMessage is a message sent by the client up to the server.
+type ClientMessage struct {
+	Number int
+	Even   bool
+}
+
+func (s *ClientMessage) A() {
+	fmt.Println("I'm a ClientMessage!")
+}
+
+func init() {
+	gob.Register(&ClientMessage{})
+	gob.Register(&ServerMessage{})
 }
 
 func serveConn(conn net.Conn) {
@@ -30,9 +54,13 @@ func serveConn(conn net.Conn) {
 	enc := gob.NewEncoder(buf)
 
 	var req Args
-	resp := new(Response)
+	var resp Blah
+	sm := new(ServerMessage)
+	cm := new(ClientMessage)
 
 	fmt.Println("Serving connection!")
+
+	i := 0
 
 	for {
 		err := dec.Decode(&req)
@@ -45,9 +73,18 @@ func serveConn(conn net.Conn) {
 			return
 		}
 		fmt.Println("got request:", req)
-		resp.Message = "hi!"
-		enc.Encode(resp)
+
+		if i%2 == 0 {
+			sm.Message = "hi!"
+			resp = sm
+		} else {
+			cm.Number = i
+			cm.Even = i%2 == 0
+			resp = cm
+		}
+		enc.Encode(&resp)
 		buf.Flush()
+		i += 1
 	}
 }
 
@@ -82,14 +119,19 @@ func client() {
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(buf)
 
-	args := Args{7, 8}
-	enc.Encode(args)
-	buf.Flush()
+	for {
 
-	var resp Response
-	err = dec.Decode(&resp)
-	if err != nil {
-		fmt.Println("error decoding response", err)
+		args := Args{7, 8}
+		enc.Encode(args)
+		buf.Flush()
+
+		var resp Blah
+		err = dec.Decode(&resp)
+		if err != nil {
+			fmt.Println("error decoding response", err)
+		}
+		fmt.Println("Got response:", resp)
+		resp.A()
+
 	}
-	fmt.Println("Got response:", resp)
 }
