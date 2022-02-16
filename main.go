@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 
 	tcell "github.com/gdamore/tcell/v2"
 )
@@ -66,11 +67,44 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 	drawText(s, x1+1, y1+1, x2-1, y2-1, style, text)
 }
 
-func main() {
+type Cell struct {
+	Rune  rune
+	Color tcell.Style
+}
 
+const WIDTH = 25
+const SCREENWIDTH = WIDTH + 2
+
+// 25 rows of 80 columns
+type Tile struct {
+	Cells [WIDTH][WIDTH]Cell
+}
+
+func NewTile() Tile {
+	return Tile{[WIDTH][WIDTH]Cell{}}
+}
+
+func (t *Tile) Draw(s tcell.Screen) {
+	for y, row := range t.Cells {
+		for x, col := range row {
+			s.SetContent(1+x, 1+y, col.Rune, nil, tcell.StyleDefault)
+		}
+	}
+	e := SCREENWIDTH - 1
+	for i := 1; i < e; i++ {
+		s.SetContent(i, 0, tcell.RuneHLine, nil, tcell.StyleDefault)
+		s.SetContent(i, e, tcell.RuneHLine, nil, tcell.StyleDefault)
+		s.SetContent(0, i, tcell.RuneVLine, nil, tcell.StyleDefault)
+		s.SetContent(e, i, tcell.RuneVLine, nil, tcell.StyleDefault)
+	}
+	s.SetContent(0, 0, tcell.RuneULCorner, nil, tcell.StyleDefault)
+	s.SetContent(0, e, tcell.RuneLLCorner, nil, tcell.StyleDefault)
+	s.SetContent(e, 0, tcell.RuneURCorner, nil, tcell.StyleDefault)
+	s.SetContent(e, e, tcell.RuneLRCorner, nil, tcell.StyleDefault)
+}
+
+func mustScreen() tcell.Screen {
 	defaultStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorPurple)
-
 	s, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatalf("%+v", err)
@@ -82,15 +116,22 @@ func main() {
 	s.EnableMouse()
 	s.EnablePaste()
 	s.Clear()
-	drawBox(s, 1, 1, 42, 7, boxStyle, "Click and drag to draw a box")
-	drawBox(s, 5, 9, 32, 14, boxStyle, "Press C to reset")
+	return s
+}
+
+func main() {
+	s := mustScreen()
+
+	t := NewTile()
+
+	t.Draw(s)
 
 	// Event loop
-	ox, oy := -1, -1
-	quit := func() {
-		s.Fini()
-		os.Exit(0)
-	}
+	// ox, oy := -1, -1
+	cleanupOnce := sync.Once{}
+	defer cleanupOnce.Do(s.Fini)
+
+	// Hot loop
 	for {
 		// Update screen
 		s.Show()
@@ -104,29 +145,29 @@ func main() {
 			s.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				quit()
+				cleanupOnce.Do(s.Fini)
 			} else if ev.Key() == tcell.KeyCtrlL {
 				s.Sync()
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
 				s.Clear()
 			}
 		case *tcell.EventMouse:
-			x, y := ev.Position()
+			// x, y := ev.Position()
 			button := ev.Buttons()
 			// Only process button events, not wheel events
 			button &= tcell.ButtonMask(0xff)
 
-			if button != tcell.ButtonNone && ox < 0 {
-				ox, oy = x, y
-			}
-			switch ev.Buttons() {
-			case tcell.ButtonNone:
-				if ox >= 0 {
-					label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
-					drawBox(s, ox, oy, x, y, boxStyle, label)
-					ox, oy = -1, -1
-				}
-			}
+			// if button != tcell.ButtonNone && ox < 0 {
+			// 	ox, oy = x, y
+			// }
+			// switch ev.Buttons() {
+			// case tcell.ButtonNone:
+			// 	if ox >= 0 {
+			// 		label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
+			// 		drawBox(s, ox, oy, x, y, boxStyle, label)
+			// 		ox, oy = -1, -1
+			// 	}
+			// }
 		}
 	}
 
