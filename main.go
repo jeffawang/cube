@@ -87,9 +87,6 @@ func serveConn(conn net.Conn) {
 			resp = cm
 		}
 		enc.Encode(&resp)
-		enc.Encode(&resp)
-		enc.Encode(&resp)
-		enc.Encode(&resp)
 		buf.Flush()
 		i += 1
 	}
@@ -126,19 +123,25 @@ func client() {
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(buf)
 
-	args := Args{7, 8}
-	enc.Encode(args)
-	buf.Flush()
-
 	for {
-
-		var resp Blah
+		args := Args{7, 8}
+		enc.Encode(args)
+		buf.Flush()
+		var resp interface{}
 		err = dec.Decode(&resp)
 		if err != nil {
 			fmt.Println("error decoding response", err)
 		}
 		fmt.Println("Got response:", resp)
-		resp.A()
+		switch resp.(type) {
+		case *ServerMessage:
+			fmt.Println("got a server message!")
+		case *ClientMessage:
+			fmt.Println("got a client message!")
+		default:
+			fmt.Println("shrugg??")
+		}
+		// resp.A()
 
 	}
 }
