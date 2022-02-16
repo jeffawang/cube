@@ -41,8 +41,8 @@ func (t *Tile) Draw(s tcell.Screen) {
 // ==============================
 
 type Cell struct {
-	Rune  rune
-	Color tcell.Style
+	Rune rune
+	// Color tcell.Style
 }
 
 // ==============================

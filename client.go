@@ -23,6 +23,7 @@ func runClient(sockPath string) {
 		args := Args{7, 8}
 		enc.Encode(args)
 		buf.Flush()
+
 		var resp interface{}
 		err = dec.Decode(&resp)
 		if err != nil {
@@ -34,11 +35,13 @@ func runClient(sockPath string) {
 			fmt.Println("++++++ SERVER message!")
 		case *ClientMessage:
 			fmt.Println("------ CLIENT message!")
+		case *ServerTile:
+			fmt.Println("++++++ ServerTile!")
 		default:
 			fmt.Println("shrugg??")
 		}
 	}
 	// resp.A()
 
-	runGame()
+	// runGame()
 }

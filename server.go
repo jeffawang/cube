@@ -13,6 +13,12 @@ import (
 func init() {
 	gob.Register(&ClientMessage{})
 	gob.Register(&ServerMessage{})
+	gob.Register(&ServerTile{})
+}
+
+// ServerTile is a tile that the server sends down to the client
+type ServerTile struct {
+	Tile
 }
 
 // ServerMessage is a message sent by the server down to clients.
@@ -25,6 +31,12 @@ type ServerMessage struct {
 type ClientMessage struct {
 	Number int
 	Even   bool
+}
+
+var serverTile = ServerTile{NewTile()}
+
+func init() {
+	serverTile.Cells[3][3].Rune = 'y'
 }
 
 func runServer(sockPath string) {
@@ -53,15 +65,9 @@ func serveConn(conn net.Conn) {
 	enc := gob.NewEncoder(buf)
 
 	var req Args
-	var resp interface{}
-	sm := new(ServerMessage)
-	cm := new(ClientMessage)
+	var msg interface{}
 
 	fmt.Println("Serving connection!", conn.LocalAddr().String(), conn.LocalAddr().Network())
-
-	defer fmt.Println("omg")
-
-	i := 0
 
 	for {
 		err := dec.Decode(&req)
@@ -74,18 +80,15 @@ func serveConn(conn net.Conn) {
 			return
 		}
 		fmt.Println("got request:", req)
-
-		if i%2 == 0 {
-			sm.Number = i
-			sm.Even = i%2 == 0
-			resp = sm
-		} else {
-			cm.Number = i
-			cm.Even = i%2 == 0
-			resp = cm
+		msg = serverTile
+		err = enc.Encode(&msg)
+		if err != nil {
+			fmt.Println("uh oh encoding", err)
 		}
-		enc.Encode(&resp)
-		buf.Flush()
-		i += 1
+		err = buf.Flush()
+		if err != nil {
+			fmt.Println("uh oh", err)
+		}
+
 	}
 }
