@@ -6,11 +6,13 @@ import (
 	tcell "github.com/gdamore/tcell/v2"
 )
 
-func runGame() {
+func runGame(serverTile ServerTile) {
 	s := MustScreen()
 
-	tile := NewTile()
+	// tile := NewTile()
 	player := NewPlayer()
+
+	tile := serverTile.Tile
 
 	entities := drawers{&tile, &player}
 	entities.Draw(s)

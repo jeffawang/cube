@@ -19,6 +19,8 @@ func runClient(sockPath string) {
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(buf)
 
+	var tile ServerTile
+
 	for i := 0; i < 6; i++ {
 		args := Args{7, 8}
 		enc.Encode(args)
@@ -30,18 +32,19 @@ func runClient(sockPath string) {
 			fmt.Println("error decoding response", err)
 		}
 		fmt.Println("Got response:", resp)
-		switch resp.(type) {
+		switch x := resp.(type) {
 		case *ServerMessage:
 			fmt.Println("++++++ SERVER message!")
 		case *ClientMessage:
 			fmt.Println("------ CLIENT message!")
 		case *ServerTile:
 			fmt.Println("++++++ ServerTile!")
+			tile = *x
 		default:
 			fmt.Println("shrugg??")
 		}
 	}
 	// resp.A()
 
-	// runGame()
+	runGame(tile)
 }
