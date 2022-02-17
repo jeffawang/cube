@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bufio"
-	"encoding/gob"
 	"fmt"
-	"io"
 	"net"
 	"os"
 )
@@ -40,51 +37,19 @@ func runServer(sockPath string) {
 }
 
 func serveConn(conn net.Conn) {
-	buf := bufio.NewWriter(conn)
-	dec := gob.NewDecoder(conn)
-	enc := gob.NewEncoder(buf)
-
-	var req interface{}
-	var msg interface{}
-
 	fmt.Println("Serving connection!", conn.LocalAddr().String(), conn.LocalAddr().Network())
-	msg = serverTile
-	err := enc.Encode(&msg)
-	if err != nil {
-		fmt.Println("uh oh encoding", err)
-	}
-	err = buf.Flush()
-	if err != nil {
-		fmt.Println("uh oh", err)
-	}
+	rpc := NewRPC(conn)
+	rpc.Connect()
 
-	for {
-		err := dec.Decode(&req)
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("Client closed connection")
-			} else {
-				fmt.Println("error decoding request", err)
-			}
-			return
-		}
-		fmt.Println("got request:", req)
-		switch r := req.(type) {
+	rpc.SendQueue <- serverTile
+
+	for msg := range rpc.RecvQueue {
+		switch r := msg.(type) {
 		case *ClientReplace:
 			fmt.Println("got a ClientReplace")
 			handleClientReplace(*r)
 		case *ClientMove:
-			msg = ServerMove{r.X, r.Y}
-			enc.Encode(&msg)
-			if err != nil {
-				fmt.Println("uh oh encoding", err)
-			}
-
-			buf.Flush()
-			if err != nil {
-				fmt.Println("uh oh", err)
-			}
-
+			rpc.SendQueue <- ServerMove{r.X, r.Y}
 		}
 	}
 }
