@@ -15,7 +15,7 @@ type Args struct {
 func main() {
 	fmt.Println(os.Args)
 	if len(os.Args) < 2 || os.Args[1] == "server" {
-		runServer(sockPath)
+		NewServer().Run(sockPath)
 	} else {
 		NewClient(sockPath).Run()
 	}

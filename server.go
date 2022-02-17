@@ -6,17 +6,19 @@ import (
 	"os"
 )
 
-var serverTile = ServerTile{NewTile()}
-
-func init() {
-	serverTile.Cells[3][3].Rune = 'y'
-}
-
 type Server struct {
-	rpc RPC
+	Tile Tile
 }
 
-func runServer(sockPath string) {
+func NewServer() *Server {
+	tile := NewTile()
+	tile.Cells[3][3].Rune = 'y'
+	return &Server{
+		Tile: tile,
+	}
+}
+
+func (s *Server) Run(sockPath string) {
 	os.Remove(sockPath)
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {
@@ -32,28 +34,24 @@ func runServer(sockPath string) {
 			fmt.Println("server error establishing connection!", err)
 		}
 		fmt.Println("New connection!")
-		go serveConn(conn)
+		go s.serveConn(conn)
 	}
 }
 
-func serveConn(conn net.Conn) {
+func (s *Server) serveConn(conn net.Conn) {
 	fmt.Println("Serving connection!", conn.LocalAddr().String(), conn.LocalAddr().Network())
 	rpc := NewRPC(conn)
 	rpc.Connect()
 
-	rpc.SendQueue <- serverTile
+	rpc.SendQueue <- &ServerTile{s.Tile}
 
 	for msg := range rpc.RecvQueue {
 		switch r := msg.(type) {
 		case *ClientReplace:
 			fmt.Println("got a ClientReplace")
-			handleClientReplace(*r)
+			s.Tile.Cells[r.Y][r.X].Rune = r.Rune
 		case *ClientMove:
 			rpc.SendQueue <- ServerMove{r.X, r.Y}
 		}
 	}
-}
-
-func handleClientReplace(cr ClientReplace) {
-	serverTile.Cells[cr.Y][cr.X].Rune = cr.Rune
 }
