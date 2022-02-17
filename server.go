@@ -9,18 +9,6 @@ import (
 	"os"
 )
 
-// ServerMessage is a message sent by the server down to clients.
-type ServerMessage struct {
-	Number int
-	Even   bool
-}
-
-// ClientMessage is a message sent by the client up to the server.
-type ClientMessage struct {
-	Number int
-	Even   bool
-}
-
 var serverTile = ServerTile{NewTile()}
 
 func init() {
@@ -85,6 +73,18 @@ func serveConn(conn net.Conn) {
 		case *ClientReplace:
 			fmt.Println("got a ClientReplace")
 			handleClientReplace(*r)
+		case *ClientMove:
+			msg = ServerMove{r.X, r.Y}
+			enc.Encode(&msg)
+			if err != nil {
+				fmt.Println("uh oh encoding", err)
+			}
+
+			buf.Flush()
+			if err != nil {
+				fmt.Println("uh oh", err)
+			}
+
 		}
 	}
 }

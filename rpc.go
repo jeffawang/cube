@@ -9,10 +9,10 @@ import (
 )
 
 func init() {
-	gob.Register(&ClientMessage{})
-	gob.Register(&ServerMessage{})
 	gob.Register(&ServerTile{})
+	gob.Register(&ServerMove{})
 	gob.Register(&ClientReplace{})
+	gob.Register(&ClientMove{})
 	gob.Register(&Args{})
 }
 
@@ -25,6 +25,10 @@ type ServerTile struct {
 	Tile
 }
 
+type ServerMove struct {
+	X, Y int
+}
+
 // ==============================
 // Client messages
 // ==============================
@@ -34,6 +38,10 @@ type ServerTile struct {
 type ClientReplace struct {
 	X, Y int
 	Rune rune
+}
+
+type ClientMove struct {
+	X, Y int
 }
 
 // ==============================

@@ -37,35 +37,12 @@ func (c *Client) Run() {
 		panic("no server tile!")
 	}
 
-	// for i := 0; i < 6; i++ {
-	// 	args := Args{7, 8}
-
-	// 	client.rpc.SendQueue <- &args
-	// 	resp := <-client.rpc.RecvQueue
-
-	// 	fmt.Println("Got response:", resp)
-	// 	switch x := resp.(type) {
-	// 	case *ServerMessage:
-	// 		fmt.Println("++++++ SERVER message!")
-	// 	case *ClientMessage:
-	// 		fmt.Println("------ CLIENT message!")
-	// 	case *ServerTile:
-	// 		fmt.Println("++++++ ServerTile!")
-	// 		tile = *x
-	// 	default:
-	// 		fmt.Println("shrugg??")
-	// 	}
-	// }
-	// fmt.Println(tile)
-	// resp.A()
-
 	c.runGame(*tile)
 }
 
 func (c *Client) runGame(serverTile ServerTile) {
 	s := MustScreen()
 
-	// tile := NewTile()
 	player := NewPlayer()
 
 	tile := serverTile.Tile
@@ -79,62 +56,62 @@ func (c *Client) runGame(serverTile ServerTile) {
 	// Hot loop
 hot:
 	for {
+		select {
+		case msg := <-c.rpc.RecvQueue:
+			switch m := msg.(type) {
+			case (*ServerMove):
+				player.X = m.X
+				player.Y = m.Y
+			}
+		default:
+		}
 
 		entities.Draw(s)
+
 		// Update screen
 		s.Show()
 
-		// Poll event
-		ev := s.PollEvent()
+		if s.HasPendingEvent() {
+			// Poll event
+			ev := s.PollEvent()
 
-		// Process event
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			s.Sync()
-		case *tcell.EventKey:
-			switch ev.Key() {
-			case tcell.KeyEscape, tcell.KeyCtrlC:
-				cleanupOnce.Do(s.Fini)
-				break hot
-			case tcell.KeyCtrlL:
+			// Process event
+			switch ev := ev.(type) {
+			case *tcell.EventResize:
 				s.Sync()
-			case tcell.KeyLeft:
-				player.Move(-1, 0)
-			case tcell.KeyRight:
-				player.Move(1, 0)
-			case tcell.KeyUp:
-				player.Move(0, -1)
-			case tcell.KeyDown:
-				player.Move(0, 1)
-			default:
-				switch ev.Rune() {
-				case 'C', 'c':
-					panic("omg")
-				case 'x':
-					player.Insert(&tile, 'x')
-					req := ClientReplace{
-						X: player.X, Y: player.Y, Rune: 'x',
+			case *tcell.EventKey:
+				switch ev.Key() {
+				case tcell.KeyEscape, tcell.KeyCtrlC:
+					cleanupOnce.Do(s.Fini)
+					break hot
+				case tcell.KeyCtrlL:
+					s.Sync()
+				case tcell.KeyLeft:
+					// player.Move(-1, 0)
+					c.rpc.SendQueue <- ClientMove{player.X - 1, player.Y}
+				case tcell.KeyRight:
+					// player.Move(1, 0)
+					c.rpc.SendQueue <- ClientMove{player.X + 1, player.Y}
+				case tcell.KeyUp:
+					// player.Move(0, -1)
+					c.rpc.SendQueue <- ClientMove{player.X, player.Y - 1}
+				case tcell.KeyDown:
+					// player.Move(0, 1)
+					c.rpc.SendQueue <- ClientMove{player.X, player.Y + 1}
+				default:
+					switch ev.Rune() {
+					case 'C', 'c':
+						panic("omg")
+					case 'x':
+						player.Insert(&tile, 'x')
+						req := ClientReplace{
+							X: player.X, Y: player.Y, Rune: 'x',
+						}
+						c.rpc.SendQueue <- req
 					}
-					c.rpc.SendQueue <- req
 				}
 			}
-		case *tcell.EventMouse:
-			// x, y := ev.Position()
-			button := ev.Buttons()
-			// Only process button events, not wheel events
-			button &= tcell.ButtonMask(0xff)
-
-			// if button != tcell.ButtonNone && ox < 0 {
-			// 	ox, oy = x, y
-			// }
-			// switch ev.Buttons() {
-			// case tcell.ButtonNone:
-			// 	if ox >= 0 {
-			// 		label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
-			// 		drawBox(s, ox, oy, x, y, boxStyle, label)
-			// 		ox, oy = -1, -1
-			// 	}
-			// }
 		}
+
 	}
 }
