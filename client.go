@@ -105,10 +105,9 @@ hot:
 						panic("omg")
 					case 'x':
 						player.Insert(&tile, 'x')
-						req := ClientReplace{
+						c.rpc.SendQueue <- ClientReplace{
 							X: player.X, Y: player.Y, Rune: 'x',
 						}
-						c.rpc.SendQueue <- req
 					}
 				}
 			}
