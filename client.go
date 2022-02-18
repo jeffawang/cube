@@ -15,7 +15,7 @@ type Client struct {
 }
 
 func NewClient(sockpath string) *Client {
-	conn, err := net.Dial("unix", sockPath)
+	conn, err := net.Dial("unix", sockpath)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

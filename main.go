@@ -17,6 +17,10 @@ func main() {
 	if len(os.Args) < 2 || os.Args[1] == "server" {
 		NewServer().Run(sockPath)
 	} else {
-		NewClient(sockPath).Run()
+		if len(os.Args) > 2 {
+			NewClient(os.Args[2]).Run()
+		} else {
+			NewClient(sockPath).Run()
+		}
 	}
 }
