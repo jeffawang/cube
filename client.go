@@ -63,6 +63,8 @@ hot:
 			case (*ServerMove):
 				player.X = m.X
 				player.Y = m.Y
+			case (*ServerReplace):
+				tile.Replace(m.X, m.Y, m.Rune)
 			}
 		default:
 		}
@@ -104,7 +106,6 @@ hot:
 					case 'C', 'c':
 						panic("omg")
 					case 'x':
-						player.Insert(&tile, 'x')
 						c.rpc.SendQueue <- ClientReplace{
 							X: player.X, Y: player.Y, Rune: 'x',
 						}

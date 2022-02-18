@@ -68,6 +68,11 @@ func (s *Server) serveConn(conn net.Conn) {
 		case *ClientReplace:
 			fmt.Println("got a ClientReplace")
 			s.Tile.Cells[r.Y][r.X].Rune = r.Rune
+			rpc.SendQueue <- ServerReplace{
+				X:    r.X,
+				Y:    r.Y,
+				Rune: r.Rune,
+			}
 		case *ClientMove:
 			x := cs.Player.X + r.X
 			y := cs.Player.Y + r.Y

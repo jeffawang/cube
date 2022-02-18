@@ -36,6 +36,10 @@ func (t *Tile) Draw(s tcell.Screen) {
 	s.SetContent(e, e, tcell.RuneLRCorner, nil, tcell.StyleDefault)
 }
 
+func (t *Tile) Replace(x, y int, r rune) {
+	t.Cells[y][x].Rune = r
+}
+
 // ==============================
 // Cell
 // ==============================
@@ -71,8 +75,4 @@ func (p *Player) Move(dx, dy int) {
 	if 0 <= newY && newY < WIDTH {
 		p.Y = newY
 	}
-}
-
-func (p *Player) Insert(t *Tile, r rune) {
-	t.Cells[p.Y][p.X].Rune = r
 }

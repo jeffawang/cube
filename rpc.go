@@ -12,6 +12,7 @@ import (
 func init() {
 	gob.Register(&ServerTile{})
 	gob.Register(&ServerMove{})
+	gob.Register(&ServerReplace{})
 	gob.Register(&ClientReplace{})
 	gob.Register(&ClientMove{})
 	gob.Register(&Args{})
