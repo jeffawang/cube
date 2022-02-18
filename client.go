@@ -54,6 +54,13 @@ func (c *Client) runGame(serverTile ServerTile) {
 	cleanupOnce := sync.Once{}
 	defer cleanupOnce.Do(s.Fini)
 
+	tEventQueue := make(chan tcell.Event, 10)
+	go func() {
+		for {
+			tEventQueue <- s.PollEvent()
+		}
+	}()
+
 	// Hot loop
 hot:
 	for {
@@ -66,19 +73,7 @@ hot:
 			case (*ServerReplace):
 				tile.Replace(m.X, m.Y, m.Rune)
 			}
-		default:
-		}
-
-		entities.Draw(s)
-
-		// Update screen
-		s.Show()
-
-		if s.HasPendingEvent() {
-			// Poll event
-			ev := s.PollEvent()
-
-			// Process event
+		case ev := <-tEventQueue:
 			switch ev := ev.(type) {
 			case *tcell.EventResize:
 				s.Sync()
@@ -113,5 +108,10 @@ hot:
 				}
 			}
 		}
+
+		entities.Draw(s)
+
+		// Update screen
+		s.Show()
 	}
 }
