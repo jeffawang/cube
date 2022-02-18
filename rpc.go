@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -23,6 +24,11 @@ func init() {
 // ServerTile is a tile that the server sends down to the client
 type ServerTile struct {
 	Tile
+}
+
+type ServerReplace struct {
+	X, Y int
+	Rune rune
 }
 
 type ServerMove struct {
@@ -71,6 +77,7 @@ func NewRPC(conn net.Conn) RPC {
 
 func (r *RPC) Connect() {
 	go func() {
+		defer close(r.RecvQueue)
 		for {
 			var resp interface{}
 			err := r.dec.Decode(&resp)
@@ -84,9 +91,12 @@ func (r *RPC) Connect() {
 		}
 	}()
 	go func() {
+		defer close(r.SendQueue)
 		for val := range r.SendQueue {
 			err := r.enc.Encode(&val)
-			if err != nil {
+			if errors.Is(err, io.EOF) {
+				close(r.SendQueue)
+			} else if err != nil {
 				fmt.Printf("Problem encoding message (%v): %s\n", val, err.Error())
 				continue
 			}

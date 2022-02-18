@@ -55,11 +55,7 @@ type Player struct {
 }
 
 func NewPlayer() Player {
-	return Player{
-		X:    WIDTH / 2,
-		Y:    WIDTH / 2,
-		Rune: 'p',
-	}
+	return Player{}
 }
 
 func (p *Player) Draw(s tcell.Screen) {
@@ -79,5 +75,4 @@ func (p *Player) Move(dx, dy int) {
 
 func (p *Player) Insert(t *Tile, r rune) {
 	t.Cells[p.Y][p.X].Rune = r
-	p.Move(1, 0)
 }

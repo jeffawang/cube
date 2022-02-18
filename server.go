@@ -38,20 +38,46 @@ func (s *Server) Run(sockPath string) {
 	}
 }
 
+type ClientState struct {
+	Player
+}
+
+func NewClientState() ClientState {
+	return ClientState{
+		Player: Player{
+			X:    WIDTH / 2,
+			Y:    WIDTH / 2,
+			Rune: 'p',
+		},
+	}
+}
+
 func (s *Server) serveConn(conn net.Conn) {
-	fmt.Println("Serving connection!", conn.LocalAddr().String(), conn.LocalAddr().Network())
+	fmt.Println("Serving connection!", conn.LocalAddr())
 	rpc := NewRPC(conn)
 	rpc.Connect()
 
-	rpc.SendQueue <- &ServerTile{s.Tile}
+	cs := NewClientState()
 
+	rpc.SendQueue <- ServerTile{s.Tile}
+	rpc.SendQueue <- ServerMove{X: cs.Player.X, Y: cs.Player.Y}
+
+	fmt.Println("started!")
 	for msg := range rpc.RecvQueue {
 		switch r := msg.(type) {
 		case *ClientReplace:
 			fmt.Println("got a ClientReplace")
 			s.Tile.Cells[r.Y][r.X].Rune = r.Rune
 		case *ClientMove:
-			rpc.SendQueue <- ServerMove{r.X, r.Y}
+			x := cs.Player.X + r.X
+			y := cs.Player.Y + r.Y
+			if x < 0 || x >= WIDTH || y < 0 || y >= WIDTH {
+				continue
+			}
+			cs.Player.X = x
+			cs.Player.Y = y
+			rpc.SendQueue <- ServerMove{x, y}
 		}
 	}
+	fmt.Println("finished!")
 }
