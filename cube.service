@@ -1,0 +1,11 @@
+[Unit]
+Description=cube
+After=network.target
+
+[Service]
+User=town
+WorkingDirectory=/home/town/cube
+ExecStart=/home/town/cube/cube
+
+[Install]
+WantedBy=multi-user.target
