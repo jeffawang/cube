@@ -85,16 +85,12 @@ hot:
 				case tcell.KeyCtrlL:
 					s.Sync()
 				case tcell.KeyLeft:
-					// player.Move(-1, 0)
 					c.rpc.SendQueue <- ClientMove{-1, 0}
 				case tcell.KeyRight:
-					// player.Move(1, 0)
 					c.rpc.SendQueue <- ClientMove{1, 0}
 				case tcell.KeyUp:
-					// player.Move(0, -1)
 					c.rpc.SendQueue <- ClientMove{0, -1}
 				case tcell.KeyDown:
-					// player.Move(0, 1)
 					c.rpc.SendQueue <- ClientMove{0, 1}
 				default:
 					switch ev.Rune() {
