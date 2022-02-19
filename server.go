@@ -116,7 +116,7 @@ messageLoop:
 			if !ok {
 				break messageLoop
 			}
-			c.recv(msg)
+			c.handleMessage(msg)
 		case msg := <-c.broadcastOut:
 			switch r := msg.(type) {
 			case (ServerReplace):
@@ -127,7 +127,7 @@ messageLoop:
 	fmt.Println("finished!")
 }
 
-func (c *conn) recv(msg interface{}) {
+func (c *conn) handleMessage(msg interface{}) {
 	switch r := msg.(type) {
 	case *ClientReplace:
 		c.srv.Tile.Cells[r.Y][r.X].Rune = r.Rune
