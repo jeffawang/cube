@@ -14,7 +14,6 @@ func init() {
 	gob.Register(&ServerReplace{})
 	gob.Register(&ClientPut{})
 	gob.Register(&ClientMove{})
-	gob.Register(&Args{})
 }
 
 // ==============================
