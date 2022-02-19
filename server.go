@@ -15,8 +15,9 @@ type Server struct {
 	Tile        Tile
 	broadcastIn chan interface{}
 
-	mu    sync.Mutex // Protects conns
-	conns map[*conn]struct{}
+	mu     sync.Mutex // Protects conns and id
+	conns  map[*conn]struct{}
+	nextID uint
 }
 
 func NewServer() *Server {
@@ -26,6 +27,7 @@ func NewServer() *Server {
 		Tile:        tile,
 		broadcastIn: make(chan interface{}, 10),
 		conns:       make(map[*conn]struct{}),
+		nextID:      1,
 	}
 }
 
@@ -68,7 +70,13 @@ func (s *Server) registerConn(c *conn) {
 		s.conns = make(map[*conn]struct{})
 	}
 	s.conns[c] = struct{}{}
-	fmt.Println("New connection registered!")
+
+	// TODO: improve id allocation
+	// - it is a side effect
+	// - it does not garbage collect for disconnected clients
+	c.id = s.nextID
+	s.nextID += 1
+	fmt.Printf("New connection registered (id: %d)\n", c.id)
 }
 
 func (s *Server) deregisterConn(c *conn) {
@@ -78,7 +86,7 @@ func (s *Server) deregisterConn(c *conn) {
 		s.conns = make(map[*conn]struct{})
 	}
 	delete(s.conns, c)
-	fmt.Println("Connection deregistered!")
+	fmt.Printf("Connection deregistered (id: %d)\n", c.id)
 }
 
 // ==============================
@@ -109,6 +117,7 @@ type conn struct {
 	rwc          net.Conn
 	rpc          RPC
 	cs           ClientState
+	id           uint
 }
 
 func (s *Server) newConn(c net.Conn) *conn {
@@ -125,7 +134,6 @@ func (s *Server) newConn(c net.Conn) *conn {
 func (c *conn) serve() {
 	c.srv.registerConn(c)
 	defer c.srv.deregisterConn(c)
-
 	c.rpc.Start()
 
 	c.rpc.SendQueue <- ServerTile{c.srv.Tile}
