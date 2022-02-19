@@ -22,33 +22,27 @@ func cmd() *cobra.Command {
 }
 
 func serverCommand() *cobra.Command {
+	var socket string
 	c := &cobra.Command{
 		Use: "server",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			socket, err := cmd.Flags().GetString("socket")
-			if err != nil {
-				return err
-			}
 			NewServer(socket).Run()
 			return nil
 		},
 	}
-	c.Flags().StringP("socket", "s", defaultSockPath, "socket to listen on")
+	c.Flags().StringVarP(&socket, "socket", "s", defaultSockPath, "socket to listen on")
 	return c
 }
 
 func clientCommand() *cobra.Command {
+	var socket string
 	c := &cobra.Command{
 		Use: "client",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			socket, err := cmd.Flags().GetString("socket")
-			if err != nil {
-				return err
-			}
 			NewClient(socket).Run()
 			return nil
 		},
 	}
-	c.Flags().StringP("socket", "s", defaultSockPath, "socket to listen on")
+	c.Flags().StringVarP(&socket, "socket", "s", defaultSockPath, "socket to listen on")
 	return c
 }
