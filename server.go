@@ -4,12 +4,20 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 )
+
+// ==============================
+// Server
+// ==============================
 
 type Server struct {
 	Tile         Tile
 	broadcastIn  chan interface{}
 	broadcastOut []chan interface{}
+
+	mu    sync.Mutex
+	conns map[conn]struct{}
 }
 
 func NewServer() *Server {
@@ -47,22 +55,38 @@ func (s *Server) Run(sockPath string) {
 		}
 		fmt.Println("New connection!")
 
-		// connChan := make(chan interface{}, 10)
-		// s.broadcastOut = append(s.broadcastOut, connChan)
-
 		go s.newConn(conn).serve()
 	}
 }
 
+// ==============================
+// ClientState
+// ==============================
+
 type ClientState struct {
 	Player
 }
+
+func NewClientState() ClientState {
+	return ClientState{
+		Player: Player{
+			X:    WIDTH / 2,
+			Y:    WIDTH / 2,
+			Rune: 'p',
+		},
+	}
+}
+
+// ==============================
+// conn
+// ==============================
 
 type conn struct {
 	srv          *Server
 	broadcastOut chan interface{}
 	rwc          net.Conn
 	rpc          RPC
+	cs           ClientState
 }
 
 func (s *Server) newConn(c net.Conn) *conn {
@@ -73,6 +97,7 @@ func (s *Server) newConn(c net.Conn) *conn {
 		broadcastOut: ch,
 		rwc:          c,
 		rpc:          NewRPC(c),
+		cs:           NewClientState(),
 	}
 }
 
@@ -80,10 +105,8 @@ func (c *conn) serve() {
 	fmt.Println("Serving connection!", c.rwc.LocalAddr())
 	c.rpc.Connect()
 
-	cs := NewClientState()
-
 	c.rpc.SendQueue <- ServerTile{c.srv.Tile}
-	c.rpc.SendQueue <- ServerMove{X: cs.Player.X, Y: cs.Player.Y}
+	c.rpc.SendQueue <- ServerMove{X: c.cs.Player.X, Y: c.cs.Player.Y}
 
 	fmt.Println("started!")
 messageLoop:
@@ -104,13 +127,13 @@ messageLoop:
 				}
 
 			case *ClientMove:
-				x := cs.Player.X + r.X
-				y := cs.Player.Y + r.Y
+				x := c.cs.Player.X + r.X
+				y := c.cs.Player.Y + r.Y
 				if x < 0 || x >= WIDTH || y < 0 || y >= WIDTH {
 					continue
 				}
-				cs.Player.X = x
-				cs.Player.Y = y
+				c.cs.Player.X = x
+				c.cs.Player.Y = y
 				c.rpc.SendQueue <- ServerMove{x, y}
 			}
 		case msg := <-c.broadcastOut:
@@ -121,14 +144,4 @@ messageLoop:
 		}
 	}
 	fmt.Println("finished!")
-}
-
-func NewClientState() ClientState {
-	return ClientState{
-		Player: Player{
-			X:    WIDTH / 2,
-			Y:    WIDTH / 2,
-			Rune: 'p',
-		},
-	}
 }
