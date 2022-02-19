@@ -150,7 +150,7 @@ messageLoop:
 
 func (c *conn) handleMessage(msg interface{}) {
 	switch r := msg.(type) {
-	case *ClientReplace:
+	case *ClientPut:
 		c.srv.Tile.Cells[r.Y][r.X].Rune = r.Rune
 		c.srv.broadcastIn <- ServerReplace{
 			X:    r.X,

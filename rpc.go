@@ -12,7 +12,7 @@ func init() {
 	gob.Register(&ServerTile{})
 	gob.Register(&ServerMove{})
 	gob.Register(&ServerReplace{})
-	gob.Register(&ClientReplace{})
+	gob.Register(&ClientPut{})
 	gob.Register(&ClientMove{})
 	gob.Register(&Args{})
 }
@@ -39,9 +39,9 @@ type ServerMove struct {
 // Client messages
 // ==============================
 
-// ClientReplace represents the intent to replace a cell's rune
+// ClientPut represents the intent to replace a cell's rune
 // in a tile.
-type ClientReplace struct {
+type ClientPut struct {
 	X, Y int
 	Rune rune
 }

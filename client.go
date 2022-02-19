@@ -97,7 +97,7 @@ hot:
 					case 'C', 'c':
 						panic("omg")
 					case 'x':
-						c.rpc.SendQueue <- ClientReplace{
+						c.rpc.SendQueue <- ClientPut{
 							X: player.X, Y: player.Y, Rune: 'x',
 						}
 					}
