@@ -14,13 +14,14 @@ import (
 type Server struct {
 	Tile        Tile
 	broadcastIn chan interface{}
+	sockPath    string
 
 	mu     sync.Mutex // Protects conns and id
 	conns  map[*conn]struct{}
 	nextID uint64
 }
 
-func NewServer() *Server {
+func NewServer(sockPath string) *Server {
 	tile := NewTile()
 	tile.Cells[3][3].Rune = 'y'
 	return &Server{
@@ -28,18 +29,19 @@ func NewServer() *Server {
 		broadcastIn: make(chan interface{}, 10),
 		conns:       make(map[*conn]struct{}),
 		nextID:      1,
+		sockPath:    sockPath,
 	}
 }
 
-func (s *Server) Run(sockPath string) {
-	os.Remove(sockPath)
-	listener, err := net.Listen("unix", sockPath)
+func (s *Server) Run() {
+	os.Remove(s.sockPath)
+	listener, err := net.Listen("unix", s.sockPath)
 	if err != nil {
-		fmt.Println("error listening on socket", sockPath)
+		fmt.Println("error listening on socket", s.sockPath)
 		os.Exit(1)
 	}
 
-	fmt.Println("Listening for new connections on", sockPath)
+	fmt.Println("Listening for new connections on", s.sockPath)
 
 	go func() {
 		for msg := range s.broadcastIn {
