@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -95,8 +94,8 @@ func (r *RPC) Start() {
 		defer close(r.SendQueue)
 		for val := range r.SendQueue {
 			err := r.enc.Encode(&val)
-			if errors.Is(err, io.EOF) {
-				close(r.SendQueue)
+			if err == io.EOF {
+				return
 			} else if err != nil {
 				fmt.Printf("Problem encoding message (%v): %s\n", val, err.Error())
 				continue
