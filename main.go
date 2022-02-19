@@ -1,48 +1,54 @@
 package main
 
-import (
-	"flag"
-	"os"
-)
+import "github.com/spf13/cobra"
 
 const defaultSockPath = "./test.sock"
 
 type cmdFunc func([]string) error
 
 func main() {
-	cmd := server
-	args := os.Args[1:]
-	if len(os.Args) > 1 {
-		switch cmdString := os.Args[1]; cmdString {
-		case "server":
-			cmd = server
-			args = os.Args[2:]
-		case "client":
-			cmd = client
-			args = os.Args[2:]
-		}
-	}
-	err := cmd(args)
-	if err != nil {
-		os.Exit(1)
-	}
+	cmd().Execute()
 }
 
-func client(args []string) error {
-	clientFlags := flag.NewFlagSet("client", flag.ExitOnError)
-	socket := clientFlags.String("socket", defaultSockPath, "path to the socket to listen on")
-	clientFlags.Parse(args)
+func cmd() *cobra.Command {
 
-	NewClient(*socket).Run()
-
-	return nil
+	root := &cobra.Command{
+		Use:   "cube",
+		Short: "hi!",
+	}
+	root.AddCommand(serverCommand())
+	root.AddCommand(clientCommand())
+	return root
 }
 
-func server(args []string) error {
-	serverFlags := flag.NewFlagSet("server", flag.ExitOnError)
-	socket := serverFlags.String("socket", defaultSockPath, "path to the socket to listen on")
-	serverFlags.Parse(args)
+func serverCommand() *cobra.Command {
+	c := &cobra.Command{
+		Use: "server",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			socket, err := cmd.Flags().GetString("socket")
+			if err != nil {
+				return err
+			}
+			NewServer(socket).Run()
+			return nil
+		},
+	}
+	c.Flags().StringP("socket", "s", defaultSockPath, "socket to listen on")
+	return c
+}
 
-	NewServer(*socket).Run()
-	return nil
+func clientCommand() *cobra.Command {
+	c := &cobra.Command{
+		Use: "client",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			socket, err := cmd.Flags().GetString("socket")
+			if err != nil {
+				return err
+			}
+			NewClient(socket).Run()
+			return nil
+		},
+	}
+	c.Flags().StringP("socket", "s", defaultSockPath, "socket to listen on")
+	return c
 }
