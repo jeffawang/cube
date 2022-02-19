@@ -74,6 +74,7 @@ func (s *Server) registerConn(c *conn) {
 	// TODO: improve id allocation
 	// - it is a side effect
 	// - it does not garbage collect for disconnected clients
+	// - it should probably happen in newConn?
 	c.id = s.nextID
 	s.nextID += 1
 	fmt.Printf("New connection registered (id: %d)\n", c.id)
