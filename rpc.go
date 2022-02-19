@@ -9,9 +9,12 @@ import (
 )
 
 func init() {
+	// Messages from server
 	gob.Register(&ServerTile{})
 	gob.Register(&ServerMove{})
 	gob.Register(&ServerReplace{})
+
+	// Messages from client
 	gob.Register(&ClientPut{})
 	gob.Register(&ClientMove{})
 }
