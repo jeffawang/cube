@@ -17,7 +17,7 @@ type Server struct {
 
 	mu     sync.Mutex // Protects conns and id
 	conns  map[*conn]struct{}
-	nextID uint
+	nextID uint64
 }
 
 func NewServer() *Server {
@@ -118,7 +118,7 @@ type conn struct {
 	rwc          net.Conn
 	rpc          RPC
 	cs           ClientState
-	id           uint
+	id           uint64
 }
 
 func (s *Server) newConn(c net.Conn) *conn {
