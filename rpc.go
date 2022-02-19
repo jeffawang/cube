@@ -76,7 +76,7 @@ func NewRPC(conn net.Conn) RPC {
 	}
 }
 
-func (r *RPC) Connect() {
+func (r *RPC) Start() {
 	go func() {
 		defer close(r.RecvQueue)
 		for {

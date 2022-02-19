@@ -28,7 +28,7 @@ func NewClient(sockpath string) *Client {
 }
 
 func (c *Client) Run() {
-	c.rpc.Connect()
+	c.rpc.Start()
 
 	var tile *ServerTile
 	resp := <-c.rpc.RecvQueue

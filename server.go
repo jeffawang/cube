@@ -103,7 +103,7 @@ func (s *Server) newConn(c net.Conn) *conn {
 
 func (c *conn) serve() {
 	fmt.Println("Serving connection!", c.rwc.LocalAddr())
-	c.rpc.Connect()
+	c.rpc.Start()
 
 	c.rpc.SendQueue <- ServerTile{c.srv.Tile}
 	c.rpc.SendQueue <- ServerMove{X: c.cs.Player.X, Y: c.cs.Player.Y}
@@ -116,26 +116,7 @@ messageLoop:
 			if !ok {
 				break messageLoop
 			}
-			switch r := msg.(type) {
-			case *ClientReplace:
-				fmt.Println("got a ClientReplace")
-				c.srv.Tile.Cells[r.Y][r.X].Rune = r.Rune
-				c.srv.broadcastIn <- ServerReplace{
-					X:    r.X,
-					Y:    r.Y,
-					Rune: r.Rune,
-				}
-
-			case *ClientMove:
-				x := c.cs.Player.X + r.X
-				y := c.cs.Player.Y + r.Y
-				if x < 0 || x >= WIDTH || y < 0 || y >= WIDTH {
-					continue
-				}
-				c.cs.Player.X = x
-				c.cs.Player.Y = y
-				c.rpc.SendQueue <- ServerMove{x, y}
-			}
+			c.recv(msg)
 		case msg := <-c.broadcastOut:
 			switch r := msg.(type) {
 			case (ServerReplace):
@@ -144,4 +125,25 @@ messageLoop:
 		}
 	}
 	fmt.Println("finished!")
+}
+
+func (c *conn) recv(msg interface{}) {
+	switch r := msg.(type) {
+	case *ClientReplace:
+		c.srv.Tile.Cells[r.Y][r.X].Rune = r.Rune
+		c.srv.broadcastIn <- ServerReplace{
+			X:    r.X,
+			Y:    r.Y,
+			Rune: r.Rune,
+		}
+	case *ClientMove:
+		x := c.cs.Player.X + r.X
+		y := c.cs.Player.Y + r.Y
+		if x < 0 || x >= WIDTH || y < 0 || y >= WIDTH {
+			return
+		}
+		c.cs.Player.X = x
+		c.cs.Player.Y = y
+		c.rpc.SendQueue <- ServerMove{x, y}
+	}
 }
