@@ -56,7 +56,6 @@ func (s *Server) Run(sockPath string) {
 		if err != nil {
 			fmt.Println("server error establishing connection!", err)
 		}
-		fmt.Println("New connection!")
 
 		go s.newConn(conn).serve()
 	}
@@ -69,6 +68,7 @@ func (s *Server) registerConn(c *conn) {
 		s.conns = make(map[*conn]struct{})
 	}
 	s.conns[c] = struct{}{}
+	fmt.Println("New connection registered!")
 }
 
 func (s *Server) deregisterConn(c *conn) {
@@ -78,6 +78,7 @@ func (s *Server) deregisterConn(c *conn) {
 		s.conns = make(map[*conn]struct{})
 	}
 	delete(s.conns, c)
+	fmt.Println("Connection deregistered!")
 }
 
 // ==============================
@@ -125,13 +126,11 @@ func (c *conn) serve() {
 	c.srv.registerConn(c)
 	defer c.srv.deregisterConn(c)
 
-	fmt.Println("Serving connection!", c.rwc.LocalAddr())
 	c.rpc.Start()
 
 	c.rpc.SendQueue <- ServerTile{c.srv.Tile}
 	c.rpc.SendQueue <- ServerMove{X: c.cs.Player.X, Y: c.cs.Player.Y}
 
-	fmt.Println("started!")
 messageLoop:
 	for {
 		select {
@@ -147,7 +146,6 @@ messageLoop:
 			}
 		}
 	}
-	fmt.Println("finished!")
 }
 
 func (c *conn) handleMessage(msg interface{}) {

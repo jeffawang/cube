@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 )
 
@@ -13,7 +12,7 @@ type Args struct {
 }
 
 func main() {
-	fmt.Println(os.Args)
+	// fmt.Println(os.Args)
 	if len(os.Args) < 2 || os.Args[1] == "server" {
 		NewServer().Run(sockPath)
 	} else {
