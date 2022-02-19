@@ -12,21 +12,20 @@ import (
 // ==============================
 
 type Server struct {
-	Tile         Tile
-	broadcastIn  chan interface{}
-	broadcastOut []chan interface{}
+	Tile        Tile
+	broadcastIn chan interface{}
 
-	mu    sync.Mutex
-	conns map[conn]struct{}
+	mu    sync.Mutex // Protects conns
+	conns map[*conn]struct{}
 }
 
 func NewServer() *Server {
 	tile := NewTile()
 	tile.Cells[3][3].Rune = 'y'
 	return &Server{
-		Tile:         tile,
-		broadcastIn:  make(chan interface{}, 10),
-		broadcastOut: make([]chan interface{}, 0),
+		Tile:        tile,
+		broadcastIn: make(chan interface{}, 10),
+		conns:       make(map[*conn]struct{}),
 	}
 }
 
@@ -42,8 +41,12 @@ func (s *Server) Run(sockPath string) {
 
 	go func() {
 		for msg := range s.broadcastIn {
-			for _, ch := range s.broadcastOut {
-				ch <- msg
+			for c := range s.conns {
+				select {
+				case c.broadcastOut <- msg:
+				default:
+					fmt.Println("Warning: attempted to broadcast to closed channel")
+				}
 			}
 		}
 	}()
@@ -57,6 +60,24 @@ func (s *Server) Run(sockPath string) {
 
 		go s.newConn(conn).serve()
 	}
+}
+
+func (s *Server) registerConn(c *conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conns == nil {
+		s.conns = make(map[*conn]struct{})
+	}
+	s.conns[c] = struct{}{}
+}
+
+func (s *Server) deregisterConn(c *conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conns == nil {
+		s.conns = make(map[*conn]struct{})
+	}
+	delete(s.conns, c)
 }
 
 // ==============================
@@ -91,7 +112,6 @@ type conn struct {
 
 func (s *Server) newConn(c net.Conn) *conn {
 	ch := make(chan interface{}, 10)
-	s.broadcastOut = append(s.broadcastOut, ch)
 	return &conn{
 		srv:          s,
 		broadcastOut: ch,
@@ -102,6 +122,9 @@ func (s *Server) newConn(c net.Conn) *conn {
 }
 
 func (c *conn) serve() {
+	c.srv.registerConn(c)
+	defer c.srv.deregisterConn(c)
+
 	fmt.Println("Serving connection!", c.rwc.LocalAddr())
 	c.rpc.Start()
 
